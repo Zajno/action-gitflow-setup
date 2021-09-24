@@ -12,13 +12,15 @@ based on `push` and `pull_request` events.
 
 Case                            | Environment | Build   | Deploy
 --------                        | ----------- | -----   | ------
-Open/sync PR to `master`        | Production  | prod    | none
+Open/sync PR to `master`        | Production  | stage   | none
 Merge PR or Push to `master`    | Production  | prod    | prod
-Open/sync PR to `develop`       | Staging     | stage   | none
-Merge PR or Push to `develop`   | Staging     | stage   | stage
+Workflow Dispatch               | Staging     | stage   | stage
 **With `sync staging` label on PR:**
-Open/Sync PR to `master`        | Production  | prod    | stage
+Open/Sync PR to `master`        | Production  | stage   | stage
 Open/Sync PR to not `master`    | Staging     | stage   | stage
+**With `sync staging prod` label on PR:**
+Open/Sync PR to `master`        | Production  | prod    | stage
+Open/Sync PR to not `master`    | Staging     | prod    | stage
 
 
 ## Usage

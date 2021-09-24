@@ -29,28 +29,31 @@ runs:
         IS_PUSH="${{ github.event_name == 'push' }}"
         IS_PR="${{ github.event_name == 'pull_request' }}"
         IS_PR_SYNC="${{ github.event.action == 'synchronize' || github.event.action == 'ready_for_review' || github.event.action == 'opened' }}"
+        IS_WORKFLOW_DISPATCH="${{ github.event_name == 'workflow_dispatch' }}"
         IS_MASTER="${{ github.ref == 'refs/heads/master' }}"
         IS_MASTER_BASE="${{ github.base_ref == 'master' }}"
         IS_DEVELOP="${{ github.ref == 'refs/heads/develop' }}"
         IS_DEVELOP_BASE="${{ github.base_ref == 'develop' }}"
         IS_SYNC_STAGING="${{ contains(github.event.pull_request.labels.*.name, 'sync staging') }}"
+        IS_SYNC_STAGING_PROD="${{ contains(github.event.pull_request.labels.*.name, 'sync staging prod') }}"
 
         echo "Github event name: ${{ github.event_name }}"
         echo "Github event action name: ${{ github.event.action }}"
         echo "Github ref: ${{ github.ref }}"
         echo "Github PR base ref: ${{ github.base_ref }}"
         echo "IS_SYNC_STAGING: $IS_SYNC_STAGING"
+        echo "IS_SYNC_STAGING_PROD: $IS_SYNC_STAGING_PROD"
 
         if [[ $IS_PR == 'true' && $IS_PR_SYNC == 'true' ]]; then
           echo "env=Staging" >> $GITHUB_OUTPUT
 
-          if [[ $IS_MASTER_BASE == 'true' ]]; then
+          if [[ $IS_SYNC_STAGING_PROD == 'true' ]]; then
             echo "build=prod" >> $GITHUB_OUTPUT
           else
             echo "build=stage" >> $GITHUB_OUTPUT
           fi
 
-          if [[ $IS_SYNC_STAGING == 'true' ]]; then
+          if [[ $IS_SYNC_STAGING == 'true' || $IS_SYNC_STAGING_PROD == 'true' ]]; then
             echo "deploy=stage" >> $GITHUB_OUTPUT
           else
             echo "deploy=none" >> $GITHUB_OUTPUT
@@ -61,15 +64,15 @@ runs:
             echo "env=Production" >> $GITHUB_OUTPUT
             echo "build=prod" >> $GITHUB_OUTPUT
             echo "deploy=prod" >> $GITHUB_OUTPUT
-          elif [[ $IS_DEVELOP == 'true' ]]; then
-            echo "env=Staging" >> $GITHUB_OUTPUT
-            echo "build=stage" >> $GITHUB_OUTPUT
-            echo "deploy=stage" >> $GITHUB_OUTPUT
           else
             echo "env=Staging" >> $GITHUB_OUTPUT
             echo "build=none" >> $GITHUB_OUTPUT
             echo "deploy=none" >> $GITHUB_OUTPUT
           fi
+        elif [[ $IS_WORKFLOW_DISPATCH == 'true' ]]; then
+          echo "env=Staging" >> $GITHUB_OUTPUT
+          echo "build=stage" >> $GITHUB_OUTPUT
+          echo "deploy=stage" >> $GITHUB_OUTPUT
         else
           echo "env=Staging" >> $GITHUB_OUTPUT
           echo "build=none" >> $GITHUB_OUTPUT
