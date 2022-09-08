@@ -10,6 +10,10 @@ description: 'Determine whether build and/or deploy and for which env (staging/p
   #   description: 'Defaults to develop'
   #   required: false
   #   default: 'develop'
+inputs:
+  envs:
+    description: 'JSON with available environments'
+    required: false
 outputs:
   env:
     description: "Environment: 'Staging' or 'Production'"
@@ -23,6 +27,43 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Determine env from labels
+      uses: actions/github-script@v5
+      id: labels-checker
+      env:
+        GH_PR_LABELS: ${{ toJSON(github.event.pull_request.labels) }}
+        ENVS: ${{ inputs.envs }}
+      with:
+        script: |
+          try {
+              const { GH_PR_LABELS, ENVS } = process.env;
+              console.log(`Input envs: `, ENVS);
+              console.log(`Input labels: `, GH_PR_LABELS);
+
+              const envs = ENVS ? JSON.parse(ENVS) : {};
+              const labels = JSON.parse(GH_PR_LABELS);
+
+              const labelNames = labels.map(l => l.name);
+              const isStagingSync = labelNames.includes('sync staging');
+              let env = null;
+
+              if (isStagingSync) {
+                  const envLabel = labelNames.find(name => !!envs[name]);
+                  env = envs[envLabel];
+
+                  console.log('Defined env: ', env);
+
+                  if (env) {
+                      core.setOutput("env", env);
+                  }
+              }
+
+              core.setOutput("isDefined", !!env);
+          } catch (error) {
+              console.log(`Error message: ${error.message}`);
+              core.setFailed(error.message);
+          }
+
     - id: determine
       run: |
 
@@ -36,7 +77,12 @@ runs:
         IS_DEVELOP_BASE="${{ github.base_ref == 'develop' }}"
         IS_SYNC_STAGING="${{ contains(github.event.pull_request.labels.*.name, 'sync staging') }}"
         IS_SYNC_STAGING_PROD="${{ contains(github.event.pull_request.labels.*.name, 'sync staging prod') }}"
+        IS_SYNC_CUSTOM="${{ steps.labels-checker.outputs.isDefined }}"
+        CUSTOM_ENV="${{ steps.labels-checker.outputs.env }}"
 
+        echo "${{ inputs.envs }}"
+        echo "labels-checker isDefined: ${{ steps.labels-checker.outputs.isDefined }}"
+        echo "labels-checker env: ${{ steps.labels-checker.outputs.env }}"
         echo "Github event name: ${{ github.event_name }}"
         echo "Github event action name: ${{ github.event.action }}"
         echo "Github ref: ${{ github.ref }}"
@@ -49,11 +95,15 @@ runs:
 
           if [[ $IS_SYNC_STAGING_PROD == 'true' ]]; then
             echo "build=prod" >> $GITHUB_OUTPUT
+          elif [[ $IS_SYNC_CUSTOM == 'true' ]]; then
+            echo "build=$CUSTOM_ENV" >> $GITHUB_OUTPUT
           else
             echo "build=stage" >> $GITHUB_OUTPUT
           fi
 
-          if [[ $IS_SYNC_STAGING == 'true' || $IS_SYNC_STAGING_PROD == 'true' ]]; then
+          if [[ $IS_SYNC_STAGING == 'true' && $IS_SYNC_CUSTOM == 'true' ]]; then
+            echo "deploy=$CUSTOM_ENV" >> $GITHUB_OUTPUT
+          elif [[ $IS_SYNC_STAGING == 'true' || $IS_SYNC_STAGING_PROD == 'true' ]]; then
             echo "deploy=stage" >> $GITHUB_OUTPUT
           else
             echo "deploy=none" >> $GITHUB_OUTPUT
