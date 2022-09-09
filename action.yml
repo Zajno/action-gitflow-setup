@@ -43,7 +43,7 @@ runs:
               const envs = ENVS ? JSON.parse(ENVS) : {};
               const labels = JSON.parse(GH_PR_LABELS);
 
-              const labelNames = labels.map(l => l.name);
+              const labelNames = labels ? labels.map(l => l.name) : [];
               const isStagingSync = labelNames.includes('sync staging');
               let env = null;
 
