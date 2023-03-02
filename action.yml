@@ -42,38 +42,38 @@ runs:
         echo "IS_SYNC_STAGING: $IS_SYNC_STAGING"
 
         if [[ $IS_PR == 'true' && $IS_PR_SYNC == 'true' ]]; then
-          echo "::set-output name=env::Staging"
+          echo "env=Staging" >> $GITHUB_OUTPUT
 
           if [[ $IS_MASTER_BASE == 'true' ]]; then
-            echo "::set-output name=build::prod"
+            echo "build=prod" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=build::stage"
+            echo "build=stage" >> $GITHUB_OUTPUT
           fi
 
           if [[ $IS_SYNC_STAGING == 'true' ]]; then
-            echo "::set-output name=deploy::stage"
+            echo "deploy=stage" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=deploy::none"
+            echo "deploy=none" >> $GITHUB_OUTPUT
           fi
 
         elif [[ $IS_PUSH == 'true' ]]; then
           if [[ $IS_MASTER == 'true' ]]; then
-            echo "::set-output name=env::Production"
-            echo "::set-output name=build::prod"
-            echo "::set-output name=deploy::prod"
+            echo "env=Production" >> $GITHUB_OUTPUT
+            echo "build=prod" >> $GITHUB_OUTPUT
+            echo "deploy=prod" >> $GITHUB_OUTPUT
           elif [[ $IS_DEVELOP == 'true' ]]; then
-            echo "::set-output name=env::Staging"
-            echo "::set-output name=build::stage"
-            echo "::set-output name=deploy::stage"
+            echo "env=Staging" >> $GITHUB_OUTPUT
+            echo "build=stage" >> $GITHUB_OUTPUT
+            echo "deploy=stage" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=env::Staging"
-            echo "::set-output name=build::none"
-            echo "::set-output name=deploy::none"
+            echo "env=Staging" >> $GITHUB_OUTPUT
+            echo "build=none" >> $GITHUB_OUTPUT
+            echo "deploy=none" >> $GITHUB_OUTPUT
           fi
         else
-          echo "::set-output name=env::Staging"
-          echo "::set-output name=build::none"
-          echo "::set-output name=deploy::none"
+          echo "env=Staging" >> $GITHUB_OUTPUT
+          echo "build=none" >> $GITHUB_OUTPUT
+          echo "deploy=none" >> $GITHUB_OUTPUT
         fi
       shell: bash
 
