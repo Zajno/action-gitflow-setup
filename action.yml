@@ -28,7 +28,7 @@ runs:
   using: "composite"
   steps:
     - name: Determine env from labels
-      uses: actions/github-script@v5
+      uses: actions/github-script@v6
       id: labels-checker
       env:
         GH_PR_LABELS: ${{ toJSON(github.event.pull_request.labels) }}
