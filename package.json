@@ -1,0 +1,25 @@
+{
+  "name": "action-gitflow-setup",
+  "version": "2.0.0",
+  "description": "A GitHub Action helper to determine evnironment to build/deploy actions",
+  "main": "lib/main.js",
+  "repository": "git@github.com:Zajno/action-gitflow-setup.git",
+  "author": "Zajno <hello@zajno.com>",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "package": "ncc build --source-map --license licenses.txt",
+    "all": "npm run build && npm run package"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.0",
+    "@actions/github": "^5.1.1",
+    "tslib": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.4.4",
+    "@vercel/ncc": "^0.36.1",
+    "typescript": "^5.1.6"
+  }
+}

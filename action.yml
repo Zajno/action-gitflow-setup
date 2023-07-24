@@ -1,138 +1,34 @@
 name: 'Setup git flow'
 description: 'Determine whether build and/or deploy and for which env (staging/production) depending on github event/action and target branch'
-# TODO: implement inputs
-# inputs:
-  # production-branch:
-  #   description: 'Defaults to master'
-  #   required: false
-  #   default: 'master'
-  # staging-branch:
-  #   description: 'Defaults to develop'
-  #   required: false
-  #   default: 'develop'
 inputs:
-  envs:
-    description: 'JSON with available environments'
+  custom_envs:
+    description: 'JSON with available environments, e.g. "{ "custom_label": "custom_env" }"'
     required: false
+  production-branch:
+    description: 'Defaults to main'
+    required: false
+    default: 'main'
+  sync-staging-label-name:
+    description: 'Defaults to "sync staging". Used to determine a label on current PR, and if present, deploy would be "stage"'
+    required: false
+    default: 'sync staging'
+  labels-override:
+    description: 'JSON with labels map to override current PR labels. Useful mostly for testing'
+    required: false
+    default: '[]'
+  sync-staging-on-prod:
+    description: 'Whether to target env to "prod" when using "sync staging" label for PRs targeted on "main" branch. Defaults to false. If false, will keep "stage" env.'
+    required: false
+    default: 'false'
 outputs:
   env:
-    description: "Environment: 'Staging' or 'Production'"
-    value: ${{ steps.determine.outputs.env }}
+    description: "Environment: 'stage' or 'prod'"
   build:
     description: "Build target: 'stage', 'prod' or 'none'"
-    value: ${{ steps.determine.outputs.build }}
   deploy:
     description: "Deploy target: 'stage', 'prod' or 'none'"
-    value: ${{ steps.determine.outputs.deploy }}
+  sha_short:
+    description: "Short SHA of current (HEAD) commit"
 runs:
-  using: "composite"
-  steps:
-    - name: Determine env from labels
-      uses: actions/github-script@v6
-      id: labels-checker
-      env:
-        GH_PR_LABELS: ${{ toJSON(github.event.pull_request.labels) }}
-        ENVS: ${{ inputs.envs }}
-      with:
-        script: |
-          try {
-              const { GH_PR_LABELS, ENVS } = process.env;
-              console.log(`Input envs: `, ENVS);
-              console.log(`Input labels: `, GH_PR_LABELS);
-
-              const envs = ENVS ? JSON.parse(ENVS) : {};
-              const labels = JSON.parse(GH_PR_LABELS);
-
-              const labelNames = labels ? labels.map(l => l.name) : [];
-              const isStagingSync = labelNames.includes('sync staging');
-              let env = null;
-
-              if (isStagingSync) {
-                  const envLabel = labelNames.find(name => !!envs[name]);
-                  env = envs[envLabel];
-
-                  console.log('Defined env: ', env);
-
-                  if (env) {
-                      core.setOutput("env", env);
-                  }
-              }
-
-              core.setOutput("isDefined", !!env);
-          } catch (error) {
-              console.log(`Error message: ${error.message}`);
-              core.setFailed(error.message);
-          }
-
-    - id: determine
-      run: |
-
-        IS_PUSH="${{ github.event_name == 'push' }}"
-        IS_PR="${{ github.event_name == 'pull_request' }}"
-        IS_PR_SYNC="${{ github.event.action == 'synchronize' || github.event.action == 'ready_for_review' || github.event.action == 'opened' }}"
-        IS_WORKFLOW_DISPATCH="${{ github.event_name == 'workflow_dispatch' }}"
-        IS_MASTER="${{ github.ref == 'refs/heads/master' }}"
-        IS_MASTER_BASE="${{ github.base_ref == 'master' }}"
-        IS_DEVELOP="${{ github.ref == 'refs/heads/develop' }}"
-        IS_DEVELOP_BASE="${{ github.base_ref == 'develop' }}"
-        IS_SYNC_STAGING="${{ contains(github.event.pull_request.labels.*.name, 'sync staging') }}"
-        IS_SYNC_STAGING_PROD="${{ contains(github.event.pull_request.labels.*.name, 'sync staging prod') }}"
-        IS_SYNC_CUSTOM="${{ steps.labels-checker.outputs.isDefined }}"
-        CUSTOM_ENV="${{ steps.labels-checker.outputs.env }}"
-
-        echo "${{ inputs.envs }}"
-        echo "labels-checker isDefined: ${{ steps.labels-checker.outputs.isDefined }}"
-        echo "labels-checker env: ${{ steps.labels-checker.outputs.env }}"
-        echo "Github event name: ${{ github.event_name }}"
-        echo "Github event action name: ${{ github.event.action }}"
-        echo "Github ref: ${{ github.ref }}"
-        echo "Github PR base ref: ${{ github.base_ref }}"
-        echo "IS_SYNC_STAGING: $IS_SYNC_STAGING"
-        echo "IS_SYNC_STAGING_PROD: $IS_SYNC_STAGING_PROD"
-
-        if [[ $IS_PR == 'true' && $IS_PR_SYNC == 'true' ]]; then
-          echo "env=Staging" >> $GITHUB_OUTPUT
-
-          if [[ $IS_SYNC_STAGING_PROD == 'true' ]]; then
-            echo "build=prod" >> $GITHUB_OUTPUT
-          elif [[ $IS_SYNC_CUSTOM == 'true' ]]; then
-            echo "build=$CUSTOM_ENV" >> $GITHUB_OUTPUT
-          else
-            echo "build=stage" >> $GITHUB_OUTPUT
-          fi
-
-          if [[ $IS_SYNC_STAGING == 'true' && $IS_SYNC_CUSTOM == 'true' ]]; then
-            echo "deploy=$CUSTOM_ENV" >> $GITHUB_OUTPUT
-          elif [[ $IS_SYNC_STAGING == 'true' || $IS_SYNC_STAGING_PROD == 'true' ]]; then
-            echo "deploy=stage" >> $GITHUB_OUTPUT
-          else
-            echo "deploy=none" >> $GITHUB_OUTPUT
-          fi
-
-        elif [[ $IS_PUSH == 'true' ]]; then
-          if [[ $IS_MASTER == 'true' ]]; then
-            echo "env=Production" >> $GITHUB_OUTPUT
-            echo "build=prod" >> $GITHUB_OUTPUT
-            echo "deploy=prod" >> $GITHUB_OUTPUT
-          else
-            echo "env=Staging" >> $GITHUB_OUTPUT
-            echo "build=none" >> $GITHUB_OUTPUT
-            echo "deploy=none" >> $GITHUB_OUTPUT
-          fi
-        elif [[ $IS_WORKFLOW_DISPATCH == 'true' ]]; then
-          echo "env=Staging" >> $GITHUB_OUTPUT
-          echo "build=stage" >> $GITHUB_OUTPUT
-          echo "deploy=stage" >> $GITHUB_OUTPUT
-        else
-          echo "env=Staging" >> $GITHUB_OUTPUT
-          echo "build=none" >> $GITHUB_OUTPUT
-          echo "deploy=none" >> $GITHUB_OUTPUT
-        fi
-      shell: bash
-
-    - name: log results
-      run: |
-        echo "Environment: ${{ steps.determine.outputs.env }}"
-        echo "Build target: ${{ steps.determine.outputs.build }}"
-        echo "Deploy target: ${{ steps.determine.outputs.deploy }}"
-      shell: bash
+  using: 'node16'
+  main: 'dist/index.js'

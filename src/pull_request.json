@@ -1,0 +1,12 @@
+
+{
+    "action": "synchronize",
+    "pull_request": {
+      "head": {
+        "ref": "custom-branch"
+      },
+      "base": {
+        "ref": "main"
+      }
+    }
+}
