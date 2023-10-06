@@ -1,6 +1,6 @@
 {
   "name": "action-gitflow-setup",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A GitHub Action helper to determine evnironment to build/deploy actions",
   "main": "lib/main.js",
   "repository": "git@github.com:Zajno/action-gitflow-setup.git",

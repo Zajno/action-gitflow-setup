@@ -69,7 +69,9 @@ export async function main() {
             result.deploy = 'stage';
         }
 
+        core.startGroup('Result (for debugging)');
         console.log('RESULT', result);
+        core.endGroup();
 
         core.setOutput('env', result.env || 'stage');
         core.setOutput('build', result.build || 'none');
