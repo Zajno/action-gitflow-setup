@@ -3,6 +3,8 @@ import { context } from '@actions/github';
 
 export async function main() {
     try {
+        core.startGroup('Debug info');
+
         core.debug(new Date().toTimeString())
 
         const syncStagingName = core.getInput('sync-staging-label-name');
@@ -68,6 +70,8 @@ export async function main() {
             result.build = 'stage';
             result.deploy = 'stage';
         }
+
+        core.endGroup();
 
         core.startGroup('Result (for debugging)');
         console.log('RESULT', result);

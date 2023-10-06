@@ -10232,6 +10232,7 @@ function main() {
     var _a, _b, _c, _d, _e;
     return tslib_1.__awaiter(this, void 0, void 0, function* () {
         try {
+            core.startGroup('Debug info');
             core.debug(new Date().toTimeString());
             const syncStagingName = core.getInput('sync-staging-label-name');
             const labels = ((_b = (_a = github_1.context.payload) === null || _a === void 0 ? void 0 : _a.pull_request) === null || _b === void 0 ? void 0 : _b.labels) || JSON.parse(core.getInput('labels-override') || '[]');
@@ -10247,7 +10248,6 @@ function main() {
                 action: github_1.context.action,
                 ref: github_1.context.ref,
                 labels: labelNames,
-                context: github_1.context.payload,
             });
             const ctx = {
                 isPush: github_1.context.eventName === 'push',
@@ -10287,7 +10287,10 @@ function main() {
                 result.build = 'stage';
                 result.deploy = 'stage';
             }
+            core.endGroup();
+            core.startGroup('Result (for debugging)');
             console.log('RESULT', result);
+            core.endGroup();
             core.setOutput('env', result.env || 'stage');
             core.setOutput('build', result.build || 'none');
             core.setOutput('deploy', result.deploy || 'none');
