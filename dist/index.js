@@ -10229,17 +10229,16 @@ const tslib_1 = __nccwpck_require__(4351);
 const core = tslib_1.__importStar(__nccwpck_require__(2186));
 const github_1 = __nccwpck_require__(5438);
 function main() {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c;
     return tslib_1.__awaiter(this, void 0, void 0, function* () {
         try {
-            core.startGroup('Debug info');
+            core.startGroup('Steps');
             core.debug(new Date().toTimeString());
             const syncStagingName = core.getInput('sync-staging-label-name');
-            const labels = ((_b = (_a = github_1.context.payload) === null || _a === void 0 ? void 0 : _a.pull_request) === null || _b === void 0 ? void 0 : _b.labels) || JSON.parse(core.getInput('labels-override') || '[]');
-            const labelNames = labels ? labels.map(l => l.name) : [];
+            const labelNames = getCurrentLabelNames();
             const isStagingSync = labelNames.includes(syncStagingName);
             console.log(`Input labels: `, labelNames);
-            const customEnv = checkLabels(labelNames, isStagingSync);
+            const customEnv = getCustomEnv(labelNames, isStagingSync);
             console.log('custom env: ', customEnv);
             const mainBranch = core.getInput('production-branch') || 'main';
             const targetSyncStagingOnMain = core.getInput('sync-staging-on-prod') === 'true';
@@ -10255,7 +10254,7 @@ function main() {
                 isPRSync: github_1.context.payload.action === 'synchronize' || github_1.context.payload.action === 'ready_for_review' || github_1.context.payload.action === 'opened',
                 isWorkflowDispatch: github_1.context.eventName === 'workflow_dispatch',
                 isPushMain: github_1.context.ref === `refs/heads/${mainBranch}`,
-                isPrMain: ((_c = github_1.context.payload.pull_request) === null || _c === void 0 ? void 0 : _c.base.ref) === mainBranch,
+                isPrMain: ((_a = github_1.context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.base.ref) === mainBranch,
                 isStagingSync,
             };
             console.log('context:', ctx);
@@ -10263,17 +10262,15 @@ function main() {
                 env: 'stage',
                 build: null,
                 deploy: null,
-                sha: (github_1.context.payload.after || ((_e = (_d = github_1.context.payload.pull_request) === null || _d === void 0 ? void 0 : _d.head) === null || _e === void 0 ? void 0 : _e.sha) || '').substring(0, 7),
+                sha: (github_1.context.payload.after || ((_c = (_b = github_1.context.payload.pull_request) === null || _b === void 0 ? void 0 : _b.head) === null || _c === void 0 ? void 0 : _c.sha) || '').substring(0, 7),
             };
             if (ctx.isPR && ctx.isPRSync) {
-                result.build = customEnv
-                    ? customEnv
-                    : 'stage';
+                result.build = customEnv.build || 'stage';
                 if (ctx.isStagingSync) {
                     if (ctx.isPrMain && targetSyncStagingOnMain) {
                         result.env = 'prod';
                     }
-                    result.deploy = customEnv || 'stage';
+                    result.deploy = customEnv.deploy || 'stage';
                 }
             }
             else if (ctx.isPush) {
@@ -10288,13 +10285,14 @@ function main() {
                 result.deploy = 'stage';
             }
             core.endGroup();
-            core.startGroup('Result (for debugging)');
+            core.startGroup('Result');
             console.log('RESULT', result);
             core.endGroup();
             core.setOutput('env', result.env || 'stage');
             core.setOutput('build', result.build || 'none');
             core.setOutput('deploy', result.deploy || 'none');
             core.setOutput('sha_short', result.sha);
+            core.setOutput('branch_name', github_1.context.ref.replace('refs/heads/', ''));
         }
         catch (error) {
             if (error instanceof Error) {
@@ -10304,23 +10302,44 @@ function main() {
     });
 }
 exports.main = main;
-function checkLabels(labelNames, isStagingSync) {
+function getCurrentLabelNames() {
+    var _a, _b;
+    const overrideData = core.getInput('labels-override');
+    const override = overrideData && JSON.parse(overrideData);
+    const labels = override || ((_b = (_a = github_1.context.payload) === null || _a === void 0 ? void 0 : _a.pull_request) === null || _b === void 0 ? void 0 : _b.labels);
+    return (labels === null || labels === void 0 ? void 0 : labels.map(l => l.name)) || [];
+}
+function getCustomEnv(labelNames, isStagingSync) {
+    const result = {
+        build: null,
+        deploy: null,
+    };
     try {
-        const ENVS = core.getInput('custom_envs');
-        console.log(`Input envs: `, ENVS);
-        const envs = ENVS ? JSON.parse(ENVS) : {};
-        let env = null;
         if (isStagingSync) {
+            const ENVS = core.getInput('custom_envs');
+            console.log(`Input envs: `, ENVS);
+            const envs = ENVS ? JSON.parse(ENVS) : {};
             const envLabel = labelNames.find(name => !!envs[name]);
-            env = envs[envLabel];
+            const envData = envs[envLabel];
+            if (typeof envData === 'string') {
+                result.build = envData;
+                result.deploy = envData;
+            }
+            else if (typeof envData === 'object') {
+                if (envData.build) {
+                    result.build = envData.build;
+                }
+                if (envData.deploy) {
+                    result.deploy = envData.deploy;
+                }
+            }
         }
-        return env;
     }
     catch (error) {
         core.error(error.message);
         core.setFailed(error.message);
     }
-    return null;
+    return result;
 }
 main();
 

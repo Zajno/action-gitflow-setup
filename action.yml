@@ -13,9 +13,9 @@ inputs:
     required: false
     default: 'sync staging'
   labels-override:
-    description: 'JSON with labels map to override current PR labels. Useful mostly for testing'
+    description: 'JSON with labels array to override current PR labels, in format of Github labels array. Useful mostly for testing'
     required: false
-    default: '[]'
+    default: ''
   sync-staging-on-prod:
     description: 'Whether to target env to "prod" when using "sync staging" label for PRs targeted on "main" branch. Defaults to false. If false, will keep "stage" env.'
     required: false
@@ -29,6 +29,8 @@ outputs:
     description: "Deploy target: 'stage', 'prod' or 'none'"
   sha_short:
     description: "Short SHA of current (HEAD) commit"
+  branch_name:
+    description: "Name of current branch"
 runs:
   using: 'node16'
   main: 'dist/index.js'

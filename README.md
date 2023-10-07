@@ -1,6 +1,6 @@
 # Git flow setup helper
 
-A [JS Github action](https://docs.github.com/en/actions/creating-actions/creating-a-javascript-action) that helps to determine environment:
+A [JS/TS Github action](https://docs.github.com/en/actions/creating-actions/creating-a-javascript-action) that helps to determine environment:
 
 * Environment: `stage` or `prod`
 * Build target: `stage`, `prod` or `none` (supports custom)
@@ -10,8 +10,8 @@ based on `push` and `pull_request` events.
 
 ## Git Flow
 
- - `main` below can be overriden by `production-branch` input var
- - `sync staging` label can be overriden by `sync-staging-label-name` input var
+ - `main` below can be overridden by `production-branch` input var
+ - `sync staging` label can be overridden by `sync-staging-label-name` input var
 
 Case                          | Environment | Build   | Deploy
 --------                      | ----------- | -----   | ------
@@ -21,36 +21,55 @@ Workflow Dispatch             | stage       | stage   | stage
 **With `sync staging` label on PR:**
 Open/Sync PR to `main` (*)    | prod        | stage   | stage
 Open/Sync PR to not `main`    | stage       | stage   | stage
-**With `sync staging` and custom env label (for example - `env:test`) on PR:**
+**With `sync staging` and `custom_envs` (see below) label on PR:**
 Open/Sync PR to `main` (*)    | prod        | {your_env}   | {your_env}
 Open/Sync PR to not `main`    | stage       | {your_env}   | {your_env}
 
-(*) - this behaviour is disabled by default. Enable it by passing `true` to `sync-staging-on-prod`.
+(*) - this behavior is disabled by default. Enable it by passing `true` to `sync-staging-on-prod`.
 
-## Usage
-For using custom environments:
-   1. Create custom label in Github. For example - `env:test`
-   2. Create JSON with envs object:
+## Custom envs usage
+
+When a label of `"sync-channel-label-name"` name is present on a PR, additionally it's possible to specify custom environments for build and deploy.
+
+For that use "`custom_envs`" parameter which should be a JSON string, so to map additional label names to detect on a PR, to choose a different build or deploy target/environment.
+
+Options for a label value format:
+
+1. just a `string`: will be used as an environment name for all outputs (build, deploy)
+2. an `object` of type:
+```ts
+{
+  build?: string;
+  deploy?: string;
+}
+```
+so you can specify different things for each output type. For skipped types the fallback is 'stage'.
+
+### Example:
 
 ```yaml
-    {
-        "{label_name}": "{env_name}"
-    }
+  with:
+    custom_envs: '{
+        "env:test": "test",
+        "target channel": {
+          "deploy": "channel"
+        }
+    }'
 ```
-   3. Put this object as string in a input parameter to action-gitflow-setup
 
-   ```yaml
-    - name: Determine Environment
-       id: det-env
-       uses: Zajno/action-gitflow-setup@main
-       with: # list of custom envs
-         custom_envs: '{
-             "{label_name}": "{env_name}"
-         }'
-   ```
+In this example, when a PR is synced **and** `"sync-channel-label-name"` label is applied, additional rules will work:
+
+ - if `env:test` label is (also) applied, output will be:
+    - build: `test`
+    - deploy: `test`
+ - else if `target channel` label applied, output will be:
+    - build: `stage`
+    - deploy: `channel`
 
 
-Here's a typical setup:
+## Setup for typical usage
+
+See more input parameters in [action.yml](./action.yml).
 
 ```yaml
 
@@ -58,45 +77,39 @@ on:
   pull_request:
     types: [ready_for_review, opened, synchronize, reopened]
     paths:
+      # whenever something changes in your source code
       - 'src/**'
   push:
     paths:
+      # whenever version changes
       - 'package.json'
     branches:
-      - master
-      - develop
+      - main
 
 jobs:
   deploy:
+    # either `push` event or `pull_request` event with `draft: false`
     if: github.event_name != 'pull_request' || github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     steps:
-      # ...
+      # ... checkout, setup node, etc
 
       - name: Determine Environment
         id: det-env
-        uses: Zajno/action-gitflow-setup@main
-        with: # list of custom envs
-          custom_envs: '{
-              "env:test": "test"
-          }'
+        uses: Zajno/action-gitflow-setup@v2
 
-      # ...
+      # ... build, test, lint etc
 
-      - name: Deploy to staging
-        if: steps.det-env.outputs.deploy == 'stage'
-        run: yarn deploy:stage
-
-      - name: Deploy to production
-        if: steps.det-env.outputs.deploy == 'prod'
-        run: yarn deploy:prod
+      # in the same way works for build steps, use `steps.det-env.outputs.build`
+      - name: Deploy to ${{ steps.det-env.outputs.deploy }}
+        if: steps.det-env.outputs.deploy != 'none'
+        # your package.json should have `deploy:stage` and `deploy:prod` scripts
+        run: yarn deploy:${{ steps.det-env.outputs.deploy }}}
 
       # ...
 ```
 
 ## Development
-
-
 
 ```bash
 npm install
