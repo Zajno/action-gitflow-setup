@@ -1,4 +1,4 @@
-require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
+/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
 /***/ 7351:
@@ -10228,86 +10228,85 @@ exports.main = void 0;
 const tslib_1 = __nccwpck_require__(4351);
 const core = tslib_1.__importStar(__nccwpck_require__(2186));
 const github_1 = __nccwpck_require__(5438);
-function main() {
-    var _a, _b, _c;
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        try {
-            core.startGroup('Steps');
-            core.debug(new Date().toTimeString());
-            const syncStagingName = core.getInput('sync-staging-label-name');
-            const labelNames = getCurrentLabelNames();
-            const isStagingSync = labelNames.includes(syncStagingName);
-            console.log(`Input labels: `, labelNames);
-            const customEnv = getCustomEnv(labelNames, isStagingSync);
-            console.log('custom env: ', customEnv);
-            const mainBranch = core.getInput('production-branch') || 'main';
-            const targetSyncStagingOnMain = core.getInput('sync-staging-on-prod') === 'true';
-            console.log('references', {
-                eventName: github_1.context.eventName,
-                action: github_1.context.action,
-                ref: github_1.context.ref,
-                labels: labelNames,
-            });
-            const ctx = {
-                isPush: github_1.context.eventName === 'push',
-                isPR: github_1.context.eventName === 'pull_request',
-                isPRSync: github_1.context.payload.action === 'synchronize' || github_1.context.payload.action === 'ready_for_review' || github_1.context.payload.action === 'opened',
-                isWorkflowDispatch: github_1.context.eventName === 'workflow_dispatch',
-                isPushMain: github_1.context.ref === `refs/heads/${mainBranch}`,
-                isPrMain: ((_a = github_1.context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.base.ref) === mainBranch,
-                isStagingSync,
-            };
-            console.log('context:', ctx);
-            const result = {
-                env: 'stage',
-                build: null,
-                deploy: null,
-                sha: (github_1.context.payload.after || ((_c = (_b = github_1.context.payload.pull_request) === null || _b === void 0 ? void 0 : _b.head) === null || _c === void 0 ? void 0 : _c.sha) || '').substring(0, 7),
-            };
-            if (ctx.isPR && ctx.isPRSync) {
-                result.build = customEnv.build || 'stage';
-                if (ctx.isStagingSync) {
-                    if (ctx.isPrMain && targetSyncStagingOnMain) {
-                        result.env = 'prod';
-                    }
-                    result.deploy = customEnv.deploy || 'stage';
-                }
-            }
-            else if (ctx.isPush) {
-                if (ctx.isPushMain) {
+async function main() {
+    try {
+        core.startGroup('Steps');
+        core.debug(new Date().toTimeString());
+        const syncStagingName = core.getInput('sync-staging-label-name');
+        const labelNames = getCurrentLabelNames();
+        const isStagingSync = labelNames.includes(syncStagingName);
+        console.log(`Input labels: `, labelNames);
+        const customEnv = getCustomEnv(labelNames, isStagingSync);
+        console.log('custom env: ', customEnv);
+        const mainBranch = core.getInput('production-branch') || 'main';
+        const targetSyncStagingOnMain = core.getInput('sync-staging-on-prod') === 'true';
+        console.log('references', {
+            eventName: github_1.context.eventName,
+            action: github_1.context.action,
+            ref: github_1.context.ref,
+            labels: labelNames,
+        });
+        const ctx = {
+            isPush: github_1.context.eventName === 'push',
+            isPR: github_1.context.eventName === 'pull_request',
+            isPRSync: github_1.context.payload.action === 'synchronize' || github_1.context.payload.action === 'ready_for_review' || github_1.context.payload.action === 'opened',
+            isWorkflowDispatch: github_1.context.eventName === 'workflow_dispatch',
+            isPushMain: github_1.context.ref === `refs/heads/${mainBranch}`,
+            isPrMain: github_1.context.payload.pull_request?.base.ref === mainBranch,
+            isStagingSync,
+        };
+        console.log('context:', ctx);
+        const result = {
+            env: 'stage',
+            build: null,
+            deploy: null,
+            sha: (github_1.context.payload.after || github_1.context.payload.pull_request?.head?.sha || '').substring(0, 7),
+            branch: ctx.isPR
+                ? github_1.context.payload.pull_request?.head?.ref
+                : github_1.context.ref?.replace('refs/heads/', ''),
+        };
+        if (ctx.isPR && ctx.isPRSync) {
+            result.build = customEnv.build || 'stage';
+            if (ctx.isStagingSync) {
+                if (ctx.isPrMain && targetSyncStagingOnMain) {
                     result.env = 'prod';
-                    result.build = 'prod';
-                    result.deploy = 'prod';
                 }
-            }
-            else if (ctx.isWorkflowDispatch) {
-                result.build = 'stage';
-                result.deploy = 'stage';
-            }
-            core.endGroup();
-            core.startGroup('Result');
-            console.log('RESULT', result);
-            core.endGroup();
-            core.setOutput('env', result.env || 'stage');
-            core.setOutput('build', result.build || 'none');
-            core.setOutput('deploy', result.deploy || 'none');
-            core.setOutput('sha_short', result.sha);
-            core.setOutput('branch_name', github_1.context.ref.replace('refs/heads/', ''));
-        }
-        catch (error) {
-            if (error instanceof Error) {
-                core.setFailed(error.message);
+                result.deploy = customEnv.deploy || 'stage';
             }
         }
-    });
+        else if (ctx.isPush) {
+            if (ctx.isPushMain) {
+                result.env = 'prod';
+                result.build = 'prod';
+                result.deploy = 'prod';
+            }
+        }
+        else if (ctx.isWorkflowDispatch) {
+            result.build = 'stage';
+            result.deploy = 'stage';
+        }
+        core.endGroup();
+        core.startGroup('Result');
+        console.log('RESULT', result);
+        core.endGroup();
+        core.setOutput('env', result.env || 'stage');
+        core.setOutput('build', result.build || 'none');
+        core.setOutput('deploy', result.deploy || 'none');
+        core.setOutput('sha_short', result.sha);
+        core.setOutput('branch', result.branch);
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            core.setFailed(error.message);
+        }
+    }
 }
 exports.main = main;
 function getCurrentLabelNames() {
-    var _a, _b;
     const overrideData = core.getInput('labels-override');
     const override = overrideData && JSON.parse(overrideData);
-    const labels = override || ((_b = (_a = github_1.context.payload) === null || _a === void 0 ? void 0 : _a.pull_request) === null || _b === void 0 ? void 0 : _b.labels);
-    return (labels === null || labels === void 0 ? void 0 : labels.map(l => l.name)) || [];
+    const labels = override || github_1.context.payload?.pull_request?.labels;
+    return labels?.map(l => l.name) || [];
 }
 function getCustomEnv(labelNames, isStagingSync) {
     const result = {
@@ -10348,4 +10347,3 @@ main();
 module.exports = __webpack_exports__;
 /******/ })()
 ;
-//# sourceMappingURL=index.js.map

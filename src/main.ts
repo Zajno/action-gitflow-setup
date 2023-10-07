@@ -45,6 +45,9 @@ export async function main() {
             build: null as string,
             deploy: null as string,
             sha: (context.payload.after || context.payload.pull_request?.head?.sha || '').substring(0, 7),
+            branch: ctx.isPR
+                ? context.payload.pull_request?.head?.ref
+                : context.ref?.replace('refs/heads/', ''),
         };
 
         if (ctx.isPR && ctx.isPRSync) {
@@ -78,7 +81,7 @@ export async function main() {
         core.setOutput('build', result.build || 'none');
         core.setOutput('deploy', result.deploy || 'none');
         core.setOutput('sha_short', result.sha);
-        core.setOutput('branch_name', context.ref.replace('refs/heads/', ''));
+        core.setOutput('branch', result.branch);
     } catch (error) {
         if (error instanceof Error) {
             core.setFailed(error.message);

@@ -29,8 +29,8 @@ outputs:
     description: "Deploy target: 'stage', 'prod' or 'none'"
   sha_short:
     description: "Short SHA of current (HEAD) commit"
-  branch_name:
-    description: "Name of current branch"
+  branch:
+    description: "Name of current head branch"
 runs:
-  using: 'node16'
+  using: 'node20'
   main: 'dist/index.js'
